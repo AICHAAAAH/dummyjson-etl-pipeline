@@ -1,0 +1,20 @@
+# Environment/secrets
+.env
+.env.airflow
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Airflow runtime data (regenerated automatically, huge, machine-specific)
+logs/
+plugins/*
+!plugins/.gitkeep
+config/*
+!config/.gitkeep
+
+# OS/editor noise
+.vscode/
+*.log
