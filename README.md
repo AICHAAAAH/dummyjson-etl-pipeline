@@ -64,12 +64,18 @@ dummyjson-etl-pipeline/
 │
 ├── dags/
 │   └── dummyjson_etl_dag.py         # Airflow DAG: extract >> transform_load >> validate
-|   └── incremental_strategy.md      # "incremental" and "idempotent" implementation 
+│
 ├── docs/
 │   ├── data_lineage.md              # source -> transform -> target field mapping
 │   └── incremental_strategy.md      # how idempotency actually works here
 │
-└── tests/
+├── tests/
+│   ├── test_transform.py
+│   └── test_data_quality.py
+│
+├── config/                          # Airflow config mount (empty, required by compose)
+└── plugins/                         # Airflow plugins mount (empty, required by compose)
+
 ```
 
 ## Tech Stack
