@@ -165,15 +165,27 @@ genuine infrastructure problems that don't show up in tutorials:
   WSL2's default memory cap is roughly half of total system RAM. Fixed by
   setting `memory=6GB` in `%USERPROFILE%\.wslconfig` and restarting WSL.
 
-- **Scheduled runs fail when the host machine sleeps.** Since this Airflow
-  deployment runs on a personal laptop rather than an always-on server,
-  scheduled runs during periods when Docker wasn't running got marked as
-  "zombie" tasks by Airflow's scheduler (task queued but never reported
-  back). Confirmed via `docker logs` showing a ~23-hour gap in worker
-  activity matching the outage window. In a real deployment, this is
-  solved by running Airflow on always-on infrastructure (a cloud VM,
-  Kubernetes, or managed Airflow like MWAA/Cloud Composer) rather than a
-  machine that sleeps.
+- **Cross-network container communication — root-caused and permanently
+  fixed, not just patched.** Initially, the Airflow stack (via Docker
+  Compose) and this project's PostgreSQL container (started standalone)
+  were on two separate Docker networks and couldn't resolve each other by
+  hostname. A `docker network connect` plus a container restart fixed it
+  temporarily — but the fix didn't survive a full Docker/WSL restart,
+  causing the scheduler to crash-loop with `socket.gaierror: Name or
+  service not known` days later. Root cause: attaching a network to an
+  already-running container is not equivalent to the container joining
+  that network from startup, and this "patched-on" state doesn't persist
+  reliably across engine restarts.
+
+  **Permanent fix:** created a dedicated, named Docker network
+  (`dummyjson-shared-net`) independent of any single compose stack.
+  Recreated the PostgreSQL container to join it directly via `--network`
+  at creation time (reattaching the existing named volume, so no data was
+  lost), and configured `docker-compose-airflow.yaml` to use that same
+  external network (`networks: default: name: dummyjson-shared-net,
+  external: true`) instead of letting Compose auto-generate its own.
+  Verified the fix by fully restarting Docker and confirming DNS
+  resolution worked immediately, with no manual reconnection step needed.
 
 ## Methodology Notes & Limitations
 
