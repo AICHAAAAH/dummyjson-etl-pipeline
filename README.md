@@ -120,13 +120,14 @@ python run_pipeline.py
 
 ### 6. Or run it fully orchestrated under Airflow
 ```powershell
+docker network create dummyjson-shared-net
+docker run --name dummyjson-postgres --network dummyjson-shared-net -e POSTGRES_USER=etl_user -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=dummyjson_etl -p 5433:5432 -d postgres:16
 docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up airflow-init
 docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up -d
-docker network connect dummyjson-etl-pipeline_default dummyjson-postgres
-docker restart dummyjson-postgres
 ```
 Then open `http://localhost:8080` (default login: `airflow` / `airflow`),
 unpause `dummyjson_etl_pipeline`, and trigger a run.
+```
 
 ## Infrastructure Notes (Real Issues Hit & Fixed)
 
@@ -144,14 +145,6 @@ genuine infrastructure problems that don't show up in tutorials:
   which Docker Compose's env-file parser rejected outright. Fixed by
   writing the file with `[System.IO.File]::WriteAllText(...)` and explicit
   ASCII encoding, verified with `Format-Hex`.
-
-- **Cross-network container communication.** The Airflow stack
-  (via Docker Compose) and this project's PostgreSQL container (started
-  standalone) were on two separate Docker networks by default and could
-  not resolve each other by hostname. Fixed with
-  `docker network connect`, plus a container restart to force DNS
-  registration to actually take effect — connecting a running container to
-  a new network doesn't always refresh DNS immediately.
 
 - **Unstable large image pulls under Docker Compose's parallel download.**
   Multi-image `docker compose pull` repeatedly failed with TLS handshake
