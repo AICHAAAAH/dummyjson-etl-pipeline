@@ -294,3 +294,8 @@ services:
 
 volumes:
   postgres-db-volume:
+
+networks:
+  default:
+    name: dummyjson-shared-net
+    external: true
