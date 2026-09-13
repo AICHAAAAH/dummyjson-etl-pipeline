@@ -140,7 +140,7 @@ docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up -d
 ```
 Then open `http://localhost:8080` (default login: `airflow` / `airflow`),
 unpause `dummyjson_etl_pipeline`, and trigger a run.
-```
+
 
 ### Why this is better
 
@@ -158,6 +158,7 @@ Install Python
 Standalone pipeline OR Airflow
 
 No duplicate container creation.
+```
 
 ## Testing
 
@@ -168,6 +169,7 @@ Run the full test suite with:
 
 ```powershell
 python -m pytest -v
+```
 
 ## Infrastructure Notes (Real Issues Hit & Fixed)
 
