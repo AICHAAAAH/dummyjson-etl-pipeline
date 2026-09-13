@@ -1,41 +1,126 @@
-import sys
-import os
-import hashlib
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-
-
-def test_row_hash_is_deterministic():
-    """The same input should always produce the same hash."""
-    hash1 = hashlib.md5("Emily|Johnson|emily@x.com|29".encode()).hexdigest()
-    hash2 = hashlib.md5("Emily|Johnson|emily@x.com|29".encode()).hexdigest()
-    assert hash1 == hash2
+from transform.transform_users import (
+    build_person,
+    build_employment,
+    build_classification,
+)
 
 
-def test_row_hash_changes_when_data_changes():
-    """Changing any field should produce a different hash."""
-    hash_original = hashlib.md5("Emily|Johnson|emily@x.com|29".encode()).hexdigest()
-    hash_changed_age = hashlib.md5("Emily|Johnson|emily@x.com|30".encode()).hexdigest()
-    assert hash_original != hash_changed_age
+def test_build_person_normalizes_data():
+    payload = {
+        "firstName": "  John  ",
+        "lastName": "  Doe ",
+        "email": " JOHN@EXAMPLE.COM ",
+        "age": 30,
+    }
+
+    result = build_person(1, payload)
+
+    assert result is not None
+    assert result["person_id"] == 1
+    assert result["first_name"] == "John"
+    assert result["last_name"] == "Doe"
+    assert result["email"] == "john@example.com"
 
 
-def test_missing_first_name_is_falsy():
-    """Simulates the exact required-field check used in transform_person."""
-    payload = {"firstName": None, "lastName": "Johnson", "email": "emily@x.com"}
-    first_name = payload.get("firstName")
-    last_name = payload.get("lastName")
-    email = payload.get("email")
+def test_build_person_missing_required_field():
+    payload = {
+        "firstName": "John",
+        "lastName": "",
+        "email": "john@example.com",
+        "age": 30,
+    }
 
-    should_skip = not first_name or not last_name or not email
-    assert should_skip is True
+    result = build_person(1, payload)
+
+    assert result is None
 
 
-def test_complete_record_is_not_skipped():
-    """A record with all required fields should NOT be skipped."""
-    payload = {"firstName": "Emily", "lastName": "Johnson", "email": "emily@x.com"}
-    first_name = payload.get("firstName")
-    last_name = payload.get("lastName")
-    email = payload.get("email")
+def test_person_hash_is_deterministic():
+    payload = {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "age": 30,
+    }
 
-    should_skip = not first_name or not last_name or not email
-    assert should_skip is False
+    result_1 = build_person(1, payload)
+    result_2 = build_person(1, payload)
+
+    assert result_1["row_hash"] == result_2["row_hash"]
+
+
+def test_person_hash_changes_when_age_changes():
+    payload_1 = {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "age": 30,
+    }
+
+    payload_2 = {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "age": 31,
+    }
+
+    result_1 = build_person(1, payload_1)
+    result_2 = build_person(1, payload_2)
+
+    assert result_1["row_hash"] != result_2["row_hash"]
+
+
+def test_build_employment_extracts_company():
+    payload = {
+        "company": {
+            "name": "Acme Corp",
+            "department": "Engineering",
+            "title": "Software Engineer",
+        }
+    }
+
+    result = build_employment(1, payload)
+
+    assert result is not None
+    assert result["person_id"] == 1
+    assert result["company_name"] == "Acme Corp"
+    assert result["department"] == "Engineering"
+    assert result["title"] == "Software Engineer"
+
+
+def test_build_employment_missing_company():
+    payload = {
+        "company": {}
+    }
+
+    result = build_employment(1, payload)
+
+    assert result is None
+
+
+def test_build_classification_normalizes_role():
+    payload = {
+        "role": "  ADMIN  ",
+        "company": {
+            "department": "IT"
+        }
+    }
+
+    result = build_classification(1, payload)
+
+    assert result is not None
+    assert result["role"] == "admin"
+    assert result["department"] == "IT"
+
+
+def test_build_classification_missing_role():
+    payload = {
+        "role": "",
+        "company": {
+            "department": "IT"
+        }
+    }
+
+    result = build_classification(1, payload)
+
+    assert result is None

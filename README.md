@@ -29,6 +29,12 @@ enough that another engineer could pick it up without asking me anything?
   hard failure on critical violations — tested by deliberately injecting
   bad data and confirming the pipeline actually stops
   (see `src/validate/data_quality.py`).
+- **Automated transformation testing**: transformation functions are tested
+  independently for normalization, required-field validation, deterministic
+  hashing, change detection, and extraction of employment/classification data
+  (see `tests/test_transform.py`).
+- **16 passing pytest tests**: the test suite covers both transformation logic
+  and data-quality validation.
 - **Full orchestration with Apache Airflow**: extract → transform_load →
   validate runs as a scheduled DAG (daily at 2 AM) with automatic retries,
   running in a Dockerized Airflow deployment (CeleryExecutor, Redis,
@@ -44,10 +50,10 @@ enough that another engineer could pick it up without asking me anything?
 dummyjson-etl-pipeline/
 ├── README.md
 ├── requirements.txt
+├── pytest.ini                     # pytest configuration: test discovery + src import path
 ├── run_pipeline.py                 # standalone runner: extract -> transform -> load -> validate
 ├── docker-compose-airflow.yaml     # full Airflow stack (webserver, scheduler, worker, etc.)
-├── .env                            # DB credentials for local (Windows-side) runs
-├── .env.airflow                    # AIRFLOW_UID for the Airflow compose stack
+├── .env.example                    # DB credentials for local (Windows-side) runs
 │
 ├── sql/
 │   └── 01_schema.sql                # staging + warehouse schema
@@ -56,7 +62,7 @@ dummyjson-etl-pipeline/
 │   ├── extract/
 │   │   └── extract_users.py         # paginated API pull -> staging.raw_users
 │   ├── transform/
-│   │   └── transform_users.py       # cleans, hashes, splits into 3 entities
+│   │   └── transform_users.py       # odular transformations + content hashing
 │   ├── load/
 │   │   └── load_warehouse.py        # idempotent upserts into warehouse tables
 │   └── validate/
@@ -80,20 +86,29 @@ dummyjson-etl-pipeline/
 
 ## Tech Stack
 
-- **Python** (pandas-free, pure `requests` + `SQLAlchemy`) — extraction,
-  transformation, loading
+- **Python** (`requests` + `SQLAlchemy`) — API extraction, transformation,
+  validation, and database loading
+- **pytest** — automated unit testing for transformations and data-quality checks
 - **PostgreSQL** (via Docker) — staging + warehouse schemas, idempotent
   upserts via `ON CONFLICT`
 - **Apache Airflow 2.9.3** (via Docker Compose, CeleryExecutor) — scheduled
   daily orchestration with retries
-- **Docker & Docker Compose** — both the project's database and the full
-  Airflow stack run containerized
+- **Docker & Docker Compose** — containerized database and Airflow infrastructure
 
 ## Setup & Reproduction
 
-### 1. Start the project's PostgreSQL database
+### 1. Create the shared Docker network and start PostgreSQL
+
 ```powershell
-docker run --name dummyjson-postgres -e POSTGRES_USER=etl_user -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=dummyjson_etl -p 5433:5432 -d postgres:16
+docker network create dummyjson-shared-net
+
+docker run --name dummyjson-postgres `
+  --network dummyjson-shared-net `
+  -e POSTGRES_USER=etl_user `
+  -e POSTGRES_PASSWORD=changeme `
+  -e POSTGRES_DB=dummyjson_etl `
+  -p 5433:5432 `
+  -d postgres:16
 ```
 > Port `5433` is used on the host to avoid colliding with any native
 > Postgres install — see "Infrastructure Notes" below for why this matters.
@@ -118,16 +133,41 @@ pip install -r requirements.txt
 python run_pipeline.py
 ```
 
-### 6. Or run it fully orchestrated under Airflow
+### 6. Run it fully orchestrated under Airflow
 ```powershell
-docker network create dummyjson-shared-net
-docker run --name dummyjson-postgres --network dummyjson-shared-net -e POSTGRES_USER=etl_user -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=dummyjson_etl -p 5433:5432 -d postgres:16
 docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up airflow-init
 docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up -d
 ```
 Then open `http://localhost:8080` (default login: `airflow` / `airflow`),
 unpause `dummyjson_etl_pipeline`, and trigger a run.
 ```
+
+### Why this is better
+
+The README then follows the actual architecture:
+
+```text
+Create shared network
+        ↓
+Create warehouse PostgreSQL on network
+        ↓
+Run schema
+        ↓
+Install Python
+        ↓
+Standalone pipeline OR Airflow
+
+No duplicate container creation.
+
+## Testing
+
+The project includes automated tests covering both transformation logic
+and data-quality validation.
+
+Run the full test suite with:
+
+```powershell
+python -m pytest -v
 
 ## Infrastructure Notes (Real Issues Hit & Fixed)
 
@@ -158,17 +198,7 @@ genuine infrastructure problems that don't show up in tutorials:
   WSL2's default memory cap is roughly half of total system RAM. Fixed by
   setting `memory=6GB` in `%USERPROFILE%\.wslconfig` and restarting WSL.
 
-- **Cross-network container communication — root-caused and permanently
-  fixed, not just patched.** Initially, the Airflow stack (via Docker
-  Compose) and this project's PostgreSQL container (started standalone)
-  were on two separate Docker networks and couldn't resolve each other by
-  hostname. A `docker network connect` plus a container restart fixed it
-  temporarily — but the fix didn't survive a full Docker/WSL restart,
-  causing the scheduler to crash-loop with `socket.gaierror: Name or
-  service not known` days later. Root cause: attaching a network to an
-  already-running container is not equivalent to the container joining
-  that network from startup, and this "patched-on" state doesn't persist
-  reliably across engine restarts.
+- **Cross-network container communication — root-caused and permanently fixed, not just patched.**
 
   **Permanent fix:** created a dedicated, named Docker network
   (`dummyjson-shared-net`) independent of any single compose stack.
