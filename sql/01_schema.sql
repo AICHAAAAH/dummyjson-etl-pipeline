@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS warehouse.person (
     first_name   TEXT NOT NULL,
     last_name    TEXT NOT NULL,
     email        TEXT NOT NULL,
+    age          INTEGER,
     row_hash     TEXT NOT NULL
 );
 
