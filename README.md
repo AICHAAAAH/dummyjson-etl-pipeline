@@ -62,7 +62,7 @@ dummyjson-etl-pipeline/
 │   ├── extract/
 │   │   └── extract_users.py         # paginated API pull -> staging.raw_users
 │   ├── transform/
-│   │   └── transform_users.py       # odular transformations + content hashing
+│   │   └── transform_users.py       # modular transformations + content hashing
 │   ├── load/
 │   │   └── load_warehouse.py        # idempotent upserts into warehouse tables
 │   └── validate/
@@ -170,7 +170,19 @@ Run the full test suite with:
 ```powershell
 python -m pytest -v
 ```
+The test suite currently covers:
 
+- Person normalization and required-field validation
+- Deterministic content hashing
+- Hash-based change detection
+- Employment extraction and validation
+- Classification normalization and validation
+- Null checks
+- Uniqueness checks
+- Referential-integrity checks
+- Range validation
+- Both valid and intentionally invalid scenarios
+- 
 ## Infrastructure Notes (Real Issues Hit & Fixed)
 
 This project was built and debugged from scratch, including several
