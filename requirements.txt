@@ -4,5 +4,4 @@ psycopg2-binary
 python-dotenv
 pytest
 SQLAlchemy
-psycopg2-binary
 python-dotenv
