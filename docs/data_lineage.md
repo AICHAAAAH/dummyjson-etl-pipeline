@@ -12,10 +12,10 @@ without reading the code.
 | `first_name` | `firstName` | Whitespace-trimmed |
 | `last_name` | `lastName` | Whitespace-trimmed |
 | `email` | `email` | Trimmed, lowercased |
-| `age` | `age` | Used as-is; validated against a 0-120 range check post-load |
+| `age` | `age` | Used as-is; validated against a 0–120 range check post-load |
 | `row_hash` | *(derived)* | MD5 of first_name, last_name, email, age — used for change detection |
 
-**Rows dropped if:** `firstName`, `lastName`, or `email` is missing.
+**Rows skipped if:** `firstName`, `lastName`, or `email` is missing.
 
 ## Employment (`warehouse.employment`)
 
@@ -23,11 +23,11 @@ without reading the code.
 |---|---|---|
 | `person_id` | `id` | Foreign key to `warehouse.person` |
 | `company_name` | `company.name` | Whitespace-trimmed |
-| `department` | `company.department` | Used as-is |
-| `title` | `company.title` | Used as-is |
+| `department` | `company.department` | Whitespace-trimmed when present |
+| `title` | `company.title` | Whitespace-trimmed when present |
 | `row_hash` | *(derived)* | MD5 of company_name, department, title |
 
-**Rows dropped if:** `company.name` is missing.
+**Rows skipped if:** `company.name` is missing.
 
 ## Classification (`warehouse.classification`)
 
@@ -38,13 +38,15 @@ without reading the code.
 | `department` | `company.department` | Duplicated from Employment, for fast filtering without a join |
 | `row_hash` | *(derived)* | MD5 of role, department |
 
-**Rows dropped if:** `role` is missing.
+**Rows skipped if:** `role` is missing.
 
 ## Rejected Row Handling
 
-Rows failing a required-field check are currently logged to the console
-(`print(f"SKIPPING ...")` in `transform_users.py`) but not persisted to a
-queryable table. **Known gap, flagged intentionally**: a production version
-should write skipped rows to a `staging.rejected_rows` table so the
-analytics team can audit exactly what didn't load, and why, without
-reading application logs.
+Rows failing a required-field check are currently skipped during transformation
+and reported through console summary counts.
+
+The pipeline does not currently persist rejected rows to a queryable table.
+
+**Known gap, flagged intentionally:** a production version should write skipped
+rows to a `staging.rejected_rows` table so the analytics team can audit exactly
+what did not load, and why, without reading application logs.
