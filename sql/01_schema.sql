@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS warehouse.person (
 
 CREATE TABLE IF NOT EXISTS warehouse.employment (
     employment_id BIGSERIAL PRIMARY KEY,
-    person_id     INTEGER NOT NULL REFERENCES warehouse.person (person_id),
+    person_id     INTEGER NOT NULL UNIQUE REFERENCES warehouse.person (person_id),
     company_name  TEXT NOT NULL,
     department    TEXT,
     title         TEXT,
