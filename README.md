@@ -26,6 +26,24 @@ Can we build a reliable, repeatable pipeline that keeps a Person/Employment/Clas
 
 ---
 
+## Verification Summary
+
+| Area | Result |
+|---|---|
+| Automated tests | 22 passed |
+| Incremental tests | 6 passed |
+| Standalone pipeline | Successfully verified |
+| Source records processed | 208 |
+| Warehouse person rows | 208 |
+| Warehouse employment rows | 208 |
+| Warehouse classification rows | 208 |
+| Data-quality checks | Passed |
+| Airflow DAG runs verified | 4 successful |
+| Airflow task stages | extract → transform_load → validate |
+| Airflow import errors | None |
+
+---
+
 ## Project Structure
 
 ```text
@@ -294,6 +312,8 @@ validate
 
 The DAG is scheduled daily at **2:00 AM** and includes automatic retries.
 
+---
+
 ## Start Airflow
 
 Initialize Airflow:
@@ -305,7 +325,7 @@ docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up airflow
 Then start the stack:
 
 ```powershell
-docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up -d
+docker compose f docker-compose-airflow.yaml --env-file .env.airflow up -d
 ```
 
 Open:
@@ -322,6 +342,47 @@ Password: airflow
 ```
 
 Then open `dummyjson_etl_pipeline`, confirm it is unpaused, trigger a manual run, and verify that `extract → transform_load → validate` succeeds.
+
+---
+
+## Airflow Verification
+
+The local Airflow deployment was verified on **2026-09-25**.
+
+The Airflow UI showed:
+
+| Check | Result |
+|---|---|
+| DAG | `dummyjson_etl_pipeline` |
+| Total runs displayed | 4 |
+| Successful runs | 4 |
+| Tasks per run | 3 |
+| Import errors | None |
+
+![Airflow DAG successful runs](docs/screenshots/airflow-dag-success.png)
+
+The verified task flow was:
+
+```text
+extract
+   ↓
+transform_load
+   ↓
+validate
+```
+
+### Extraction Evidence
+
+The extraction task successfully retrieves records from the DummyJSON REST API and writes them to the PostgreSQL staging layer.
+
+![Airflow extraction log](docs/screenshots/airflow-extract-log.png)
+
+### Data Quality Validation Evidence
+
+After loading the warehouse, the validation task checks nulls, uniqueness, referential integrity, and value ranges.
+
+![Airflow validation log](docs/screenshots/airflow-validation-log.png)
+
 
 ---
 
@@ -391,6 +452,12 @@ Result:
 
 The automated tests are unit-level tests. PostgreSQL loading behavior was additionally verified through controlled database tests.
 
+## Test Execution Evidence
+
+The complete test suite was executed locally with pytest.
+
+![Pytest results](docs/screenshots/pytest-results.png)
+
 ---
 
 # Incremental Loading & Idempotency
@@ -416,6 +483,7 @@ Same hash?
   ↓         ↓
 No change  Update
 ```
+---
 
 ## Repeat-Run Verification
 
@@ -447,6 +515,14 @@ classification:  208
 All 208 records were reported as `unchanged` during both repeated runs.
 
 This demonstrates idempotent warehouse loading for unchanged source content.
+
+---
+
+## Incremental Test Evidence
+
+The dedicated incremental test suite verifies deterministic hashing and the behavior of changes across the Person, Employment, and Classification models.
+
+![Incremental test results](docs/screenshots/incremental-tests.png)
 
 ---
 
@@ -508,6 +584,19 @@ and the original hash was restored:
 This confirms that unchanged source content leaves the warehouse unchanged, while changed source content updates the affected warehouse row.
 
 Detailed documentation is available in [`docs/incremental_strategy.md`](docs/incremental_strategy.md).
+
+---
+
+# Warehouse Verification
+
+The pipeline loads the transformed data into three PostgreSQL warehouse tables:
+
+```text
+warehouse.person
+warehouse.employment
+warehouse.classification
+```
+![Postgresql Warehouse](docs/screenshots/postgresql-warehouse.png)
 
 ---
 
