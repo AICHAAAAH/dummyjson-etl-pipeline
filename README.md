@@ -860,8 +860,6 @@ Possible future improvements include:
 - Source-side incremental extraction when a reliable watermark becomes available
 - CDC integration for a database-backed production source
 
-These improvements are intentionally treated as future work rather than adding unnecessary infrastructure complexity to the current portfolio version.
-
 ---
 
 # Author
