@@ -325,7 +325,7 @@ docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up airflow
 Then start the stack:
 
 ```powershell
-docker compose f docker-compose-airflow.yaml --env-file .env.airflow up -d
+docker compose -f docker-compose-airflow.yaml --env-file .env.airflow up -d
 ```
 
 Open:
@@ -596,7 +596,7 @@ warehouse.person
 warehouse.employment
 warehouse.classification
 ```
-![Postgresql Warehouse](docs/screenshots/postgresql-warehouse.png)
+![PostgreSQL warehouse verification](docs/screenshots/postgresql-warehouse.png)
 
 ---
 
